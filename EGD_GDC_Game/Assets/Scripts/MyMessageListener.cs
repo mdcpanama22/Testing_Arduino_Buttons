@@ -2,32 +2,149 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using System.IO;
 using UnityEngine.UI;
 
 public class MyMessageListener : MonoBehaviour {
 
+	//ARDUINO CONNECTION STUFF
     private bool Connected;
 
     public GameObject L;
     public GameObject R;
 	public GameObject T;
 	public Text CodeT;
+
+	//USB CONNECTION STUFF
+	private List<String> USBS;
+
+	private String TextFileName = "TestingUSB.txt";
+	private String FileCommands;
+
+	public GameObject Heal;
+	public GameObject Fix;
+	/*
+		The Driver letter assignment in windows works as such:
+
+		When you connect a usb it will automatically connect it to D:\ and E:\ with every subsequent one
+		being the next letter.
+
+		For this project we will be dealing with three usbs therefore:
+		D:\, E:\, and F:\
+	
+	 */
+
+	 /*
+		We could make it so that the order of connecting USBs matter, which would override the port issue
+
+
+	 */
+
 	// Use this for initialization
 	void Start () {
+
+		//ARDUINO CONNECTION
         Connected = false;	
+
+		//USB CONNECTION
+		USBS = new List<String>();
+		USBS.Add("D:\\");
+		USBS.Add("E:\\");
+		USBS.Add("F:\\");
+
+        string[] allDrives = Directory.GetLogicalDrives();
+        foreach (string  d in allDrives)
+        {
+            	Debug.Log(d);
+        }
+
+		/*string path = @"c:\Users\carlsm4\Test.txt";
+		// Open the file to read from.
+        using (StreamReader sr = File.OpenText(path))
+        {
+            string s;
+            while ((s = sr.ReadLine()) != null)
+            {
+				if("Testing to see if we can open this in unity;" == s){
+					GetComponent<Renderer>().material.color = Color.yellow;
+				}
+                text_.text = s;
+            }
+        }*/
 	}
 	
 	// Update is called once per frame
 	void Update () {
-		
+		//USB CONNECTION STUFF
+		string[] allDrives = Directory.GetLogicalDrives();
+		string Drives = "";
+        foreach (string  d in allDrives)
+        {
+            Drives += d;
+        }
+		foreach(string usb in USBS){
+			if(Drives.Contains(usb)){
+				//This is to test out to see if we can access the specific txt file
+				string path = usb+"\\"+TextFileName;
+				try{
+					using (StreamReader sr = File.OpenText(path))
+        			{
+            			string s;
+						while ((s = sr.ReadLine()) != null)
+						{
+							FileCommands += s + " ";
+						}
+					}
+				}catch (Exception e){
+					Debug.Log("Nice try loser");
+					Debug.Log(e.Message);
+				}
+			}
+		}
+		PowerUp(FileCommands);
+		FileCommands = "";
+
+	}
+	/*
+		USB SECTION, ALL COMMANDS HERE REGARDED TO THE USB ONLY
+
+	*/
+  
+  void PowerUp(String FileCommand){
+	Debug.Log(FileCommand);
+			if(FileCommand != null){
+				if(FileCommand.Contains("Command1")){
+					float x = Input.GetAxis("Horizontal");
+					Rigidbody rb = Heal.GetComponent<Rigidbody>();
+					rb.velocity = new Vector3(x * 10.0f, rb.velocity.y, rb.velocity.z);
+					Heal.GetComponent<Renderer>().material.color = Color.red;
+				}else{
+					Heal.GetComponent<Renderer>().material.color = Color.white;
+				}
+				if(FileCommand.Contains("Command2")){
+					float x = Input.GetAxis("Vertical");
+					Rigidbody rb = Heal.GetComponent<Rigidbody>();
+					rb.velocity = new Vector3(rb.velocity.x, x * 10.0f, rb.velocity.z);
+					Fix.GetComponent<Renderer>().material.color = Color.black;
+				}else{
+					Fix.GetComponent<Renderer>().material.color = Color.white;
+				}
+			}
 	}
 
-    //called when Arduion sends a line of data
+  
+  /*
+
+	ARDUINO SECTION, ALL COMMANDS THAT HAVE TO DO WITH THE ARDUINO
+
+  */
+  
+  //called when Arduion sends a line of data
 
     void OnMessageArrived(string m)
     {
         TestCommands(m);
-        //Debug.Log("Arrived: " + m);
+        Debug.Log("Arrived: " + m);
 
     }
     void OnConnectionEvent(bool s)
@@ -58,8 +175,6 @@ public class MyMessageListener : MonoBehaviour {
         foreach(String x in SS){
             commands += x;
         }
-        Debug.Log(commands);
-         
         if (commands.Contains("L"))
         {
             L.GetComponent<Renderer>().material.color = Color.yellow;
@@ -70,6 +185,7 @@ public class MyMessageListener : MonoBehaviour {
         }
         if(commands.Contains("R"))
         {
+			Heal.transform.Translate(Vector3.up * 3 * Time.deltaTime, Space.World);
             R.GetComponent<Renderer>().material.color = Color.yellow;
         }
         else
