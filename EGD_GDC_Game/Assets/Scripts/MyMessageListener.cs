@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
 using UnityEngine.UI;
+using UnityStandardAssets.Characters.ThirdPerson;
 
 public class MyMessageListener : MonoBehaviour {
 
 	//ARDUINO CONNECTION STUFF
     private bool Connected;
 
+    public GameObject Character;
     public GameObject L;
     public GameObject R;
 	public GameObject T;
@@ -23,7 +25,7 @@ public class MyMessageListener : MonoBehaviour {
 
 	public GameObject Heal;
 	public GameObject Fix;
-	/*
+    /*
 		The Driver letter assignment in windows works as such:
 
 		When you connect a usb it will automatically connect it to D:\ and E:\ with every subsequent one
@@ -34,12 +36,18 @@ public class MyMessageListener : MonoBehaviour {
 	
 	 */
 
-	 /*
-		We could make it so that the order of connecting USBs matter, which would override the port issue
+    /*
+       We could make it so that the order of connecting USBs matter, which would override the port issue
 
 
-	 */
+    */
 
+    public bool MOVEMENT = false;
+    private bool MovementCooldown = false;
+    public float coolDownTime = 3f;
+    private float coolDownTimer = 0f;
+    private float buttonDouble = 0f;
+    private string COMMANDS = "WW";
 	// Use this for initialization
 	void Start () {
 
@@ -51,11 +59,12 @@ public class MyMessageListener : MonoBehaviour {
 		USBS.Add("D:\\");
 		USBS.Add("E:\\");
 		USBS.Add("F:\\");
+        USBS.Add("G:\\");
 
         string[] allDrives = Directory.GetLogicalDrives();
         foreach (string  d in allDrives)
         {
-            	Debug.Log(d);
+            	//Debug.Log(d);
         }
 
 		/*string path = @"c:\Users\carlsm4\Test.txt";
@@ -96,8 +105,8 @@ public class MyMessageListener : MonoBehaviour {
 						}
 					}
 				}catch (Exception e){
-					Debug.Log("Nice try loser");
-					Debug.Log(e.Message);
+					//Debug.Log("Nice try loser");
+					//Debug.Log(e.Message);
 				}
 			}
 		}
@@ -111,13 +120,14 @@ public class MyMessageListener : MonoBehaviour {
 	*/
   
   void PowerUp(String FileCommand){
-	Debug.Log(FileCommand);
 			if(FileCommand != null){
 				if(FileCommand.Contains("Command1")){
 					float x = Input.GetAxis("Horizontal");
 					Rigidbody rb = Heal.GetComponent<Rigidbody>();
 					rb.velocity = new Vector3(x * 10.0f, rb.velocity.y, rb.velocity.z);
 					Heal.GetComponent<Renderer>().material.color = Color.red;
+                    GetComponent<SerialController>().SendSerialMessage("H");
+                    return;
 				}else{
 					Heal.GetComponent<Renderer>().material.color = Color.white;
 				}
@@ -126,10 +136,14 @@ public class MyMessageListener : MonoBehaviour {
 					Rigidbody rb = Heal.GetComponent<Rigidbody>();
 					rb.velocity = new Vector3(rb.velocity.x, x * 10.0f, rb.velocity.z);
 					Fix.GetComponent<Renderer>().material.color = Color.black;
-				}else{
+                    GetComponent<SerialController>().SendSerialMessage("B");
+                    return;
+                }
+                else{
 					Fix.GetComponent<Renderer>().material.color = Color.white;
 				}
-			}
+                GetComponent<SerialController>().SendSerialMessage("A");
+        }
 	}
 
   
@@ -175,14 +189,14 @@ public class MyMessageListener : MonoBehaviour {
         foreach(String x in SS){
             commands += x;
         }
-        if (commands.Contains("L"))
+       /* if (commands.Contains("L"))
         {
             L.GetComponent<Renderer>().material.color = Color.yellow;
         }
         else
         {
             L.GetComponent<Renderer>().material.color = Color.white;
-        }
+        }*/
         if(commands.Contains("R"))
         {
 			Heal.transform.Translate(Vector3.up * 3 * Time.deltaTime, Space.World);
@@ -237,5 +251,41 @@ public class MyMessageListener : MonoBehaviour {
 			}
 			CodeT.text = "";
 		}
+
+
+        //Checking Command schemes
+        CheckDoubleTap(Time.time, commands);
+        Character.GetComponent<ThirdPersonCharacter>().setMovement(MOVEMENT);
+        if (MOVEMENT)
+        {
+            L.GetComponent<Renderer>().material.color = Color.yellow;
+        }
+        else
+        {
+            L.GetComponent<Renderer>().material.color = Color.white;
+        }
+    }
+
+    private void CheckDoubleTap(float time, string c)
+    {   
+        if(buttonDouble == 0)
+        {
+            buttonDouble = time;
+        }
+
+        if(time - coolDownTimer >= coolDownTime)
+            if(time - buttonDouble >= coolDownTime)
+            {
+                Debug.Log("SHOULD SHOW UP EVERY SECOND");
+                if ((c[0] != COMMANDS[0] /*&& c[1] != COMMANDS[1]*/))
+                {
+                    MOVEMENT = true;
+                    coolDownTimer = Time.time;
+                }
+                else
+                    MOVEMENT = false;
+
+                COMMANDS = c;
+            }
     }
 }
